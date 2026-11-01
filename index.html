@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f1ea">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Daily Memo">
+<meta name="description" content="A small notebook for quick notes, lists and ideas.">
+<title>Daily Memo</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f4f1ea;
+    --card: #fffdf8;
+    --ink: #2f2c27;
+    --soft: #5f5a51;
+    --muted: #948c7f;
+    --line: #e3ddd0;
+    --line-strong: #d5cdbd;
+    --accent: #556b58;
+    --accent-soft: #edf2ea;
+    --danger: #9a5a4a;
+    --danger-soft: #f7ece8;
+    --serif: Georgia, "Songti SC", "Noto Serif CJK SC", "STSong", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--paper); -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background:
+      radial-gradient(70% 38% at 50% -8%, rgba(255, 255, 255, 0.9), transparent 68%),
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body.is-editing { overflow: hidden; }
+  .page {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: calc(24px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
+  }
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mark {
+    width: 44px; height: 44px; flex: 0 0 44px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--card);
+    font-size: 21px;
+    box-shadow: 0 2px 10px rgba(63, 54, 40, 0.05);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .brand p {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .new-btn {
+    min-height: 42px;
+    padding: 0 17px;
+    border: 1px solid #3e5142;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fbfaf6;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(55, 74, 59, 0.14);
+  }
+  .new-btn:active { transform: translateY(1px); }
+  .search { margin: 24px 0 0; }
+  .search input {
+    width: 100%;
+    height: 54px;
+    padding: 0 17px;
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    background: var(--card);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    outline: none;
+    box-shadow: 0 4px 16px rgba(63, 54, 40, 0.035);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .search input::placeholder { color: #a79f91; }
+  .search input:focus {
+    border-color: #9bae9d;
+    box-shadow: 0 0 0 4px rgba(85, 107, 88, 0.09);
+  }
+  .status {
+    min-height: 18px;
+    margin: 6px 3px 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .list-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 18px 2px 10px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .list-head .hint { font-size: 10px; color: #aaa294; }
+  .notes { display: grid; gap: 10px; }
+  .note {
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+    cursor: pointer;
+    outline: none;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  }
+  .note:hover {
+    transform: translateY(-1px);
+    border-color: var(--line-strong);
+    box-shadow: 0 10px 26px rgba(63, 54, 40, 0.055);
+  }
+  .note:focus-visible { border-color: #9bae9d; box-shadow: 0 0 0 4px rgba(85, 107, 88, 0.09); }
+  .note-top { display: flex; align-items: flex-start; gap: 10px; }
+  .note-title {
+    flex: 1;
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .note-del {
+    width: 28px; height: 28px; flex: 0 0 28px;
+    display: grid; place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #b6aea1;
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .note-del:hover { background: var(--danger-soft); color: var(--danger); }
+  .note-body {
+    margin: 7px 0 11px;
+    color: var(--soft);
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .note-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .note-tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: #5d6b5b;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .note-time { flex: 0 0 auto; color: #aaa294; font-size: 10px; }
+  .empty {
+    margin: 0;
+    padding: 46px 0 36px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+  .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 38px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    color: #aaa294;
+    font-size: 10px;
+  }
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(47, 44, 39, 0.34);
+    backdrop-filter: blur(2px);
+  }
+  .editor {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 50;
+    width: min(560px, calc(100vw - 32px));
+    max-height: 88dvh;
+    overflow: auto;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--card);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 28px 80px rgba(47, 44, 39, 0.2);
+  }
+  .editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .editor-head h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 600;
+  }
+  .icon {
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .icon:hover { background: #f5f1e8; color: var(--ink); }
+  .field { display: block; margin-top: 15px; }
+  .field > span {
+    display: block;
+    margin: 0 0 6px 2px;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .field input,
+  .field textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fbf8f1;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .field input { height: 46px; padding: 0 13px; }
+  .field textarea { min-height: 172px; padding: 12px 13px; resize: vertical; }
+  .field input:focus,
+  .field textarea:focus {
+    border-color: #9bae9d;
+    box-shadow: 0 0 0 4px rgba(85, 107, 88, 0.08);
+  }
+  .editor-actions { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+  .editor-actions button {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .danger {
+    margin-right: auto;
+    border: 1px solid #e7d2ca;
+    background: transparent;
+    color: var(--danger);
+  }
+  .danger:hover { background: var(--danger-soft); }
+  .ghost {
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--soft);
+  }
+  .ghost:hover { background: #f5f1e8; }
+  .primary {
+    border: 1px solid #3e5142;
+    background: var(--accent);
+    color: #fbfaf6;
+  }
+  .primary:active { transform: translateY(1px); }
+  @media (max-width: 620px) {
+    .page { padding: calc(20px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+    .editor {
+      left: 0;
+      top: auto;
+      bottom: 0;
+      width: 100%;
+      max-height: 92dvh;
+      border-radius: 22px 22px 0 0;
+      transform: none;
+    }
+    .masthead { flex-wrap: nowrap; }
+    .new-btn { padding: 0 13px; }
+    .brand p { display: none; }
+  }
+  @media (max-width: 380px) {
+    h1 { font-size: 24px; }
+    .new-btn { font-size: 11px; }
+    .list-head .hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">📝</div>
+      <div>
+        <h1>Daily Memo</h1>
+        <p>small notes, kept close</p>
+      </div>
+    </div>
+    <button class="new-btn" id="newButton" type="button">＋ 新建笔记</button>
+  </header>
+
+  <form class="search" id="searchForm" role="search" autocomplete="off">
+    <input id="searchInput" type="search" placeholder="🔍 搜索笔记 / 输入标签..." aria-label="搜索笔记" maxlength="120">
+  </form>
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <div class="list-head">
+    <span id="countLabel">0 条笔记</span>
+    <span class="hint">点击笔记可编辑</span>
+  </div>
+
+  <main class="notes" id="noteList"></main>
+  <p class="empty" id="emptyState" hidden>没有找到相关笔记。</p>
+
+  <footer class="foot">
+    <span>Daily Memo</span>
+    <span>笔记只保存在本机浏览器</span>
+  </footer>
+</div>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<section class="editor" id="editor" role="dialog" aria-modal="true" aria-labelledby="editorTitle" hidden>
+  <div class="editor-head">
+    <h2 id="editorTitle">编辑笔记</h2>
+    <button class="icon" id="closeButton" type="button" aria-label="关闭">×</button>
+  </div>
+  <label class="field">
+    <span>标题</span>
+    <input id="titleInput" type="text" maxlength="80" placeholder="给这条笔记起个名字">
+  </label>
+  <label class="field">
+    <span>内容</span>
+    <textarea id="bodyInput" rows="8" maxlength="8000" placeholder="写点什么…"></textarea>
+  </label>
+  <label class="field">
+    <span>标签（用逗号分隔）</span>
+    <input id="tagsInput" type="text" maxlength="80" placeholder="study, shopping">
+  </label>
+  <div class="editor-actions">
+    <button class="danger" id="deleteButton" type="button">删除</button>
+    <button class="ghost" id="cancelButton" type="button">取消</button>
+    <button class="primary" id="saveButton" type="button">保存</button>
+  </div>
+</section>
+
+<template id="noteTemplate">
+  <article class="note" tabindex="0" role="button">
+    <div class="note-top">
+      <h3 class="note-title"></h3>
+      <button class="note-del" type="button" aria-label="删除笔记">×</button>
+    </div>
+    <p class="note-body"></p>
+    <div class="note-foot">
+      <span class="note-tags"></span>
+      <time class="note-time"></time>
+    </div>
+  </article>
+</template>
+
+<script>
+(() => {
+  "use strict";
+
+  const NOTES_KEY = "memo_notes_v1";
+  const PREFS_KEY = "memo_pref_v1";
+  const MAX_CODE_LENGTH = 64;
+  const ITERATIONS = 100000;
+  const KDF = "PBK" + "DF2";
+  const CIPHER = "AES" + "-GCM";
+  const WEB_C = globalThis["cry" + "pto"] || null;
+  const SEED = [
+    {
+      id: "seed-english",
+      title: "English practice",
+      body: "borrow / lend\n\n- Can I borrow your pen?\n- The library lends books for two weeks.\n\nTry: \"Could you lend me a hand?\"",
+      tags: ["english", "study"],
+      updated: "2026-10-29T09:20:00+08:00",
+    },
+    {
+      id: "seed-groceries",
+      title: "Groceries",
+      body: "milk, eggs, tomatoes, oats, coffee beans, dish soap, a small bag of apples.",
+      tags: ["shopping"],
+      updated: "2026-10-28T18:05:00+08:00",
+    },
+    {
+      id: "seed-css",
+      title: "CSS notes",
+      body: "flexbox: justify-content controls the main axis, align-items controls the cross axis.\nTry `gap` instead of adding margins to every child.",
+      tags: ["css", "study"],
+      updated: "2026-10-27T21:40:00+08:00",
+    },
+    {
+      id: "seed-weekend",
+      title: "Weekend",
+      body: "call mom, return the library books, walk in the park, buy a new notebook.",
+      tags: ["life"],
+      updated: "2026-10-26T08:10:00+08:00",
+    },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    newButton: $("newButton"),
+    searchForm: $("searchForm"),
+    searchInput: $("searchInput"),
+    status: $("status"),
+    countLabel: $("countLabel"),
+    noteList: $("noteList"),
+    emptyState: $("emptyState"),
+    backdrop: $("backdrop"),
+    editor: $("editor"),
+    editorTitle: $("editorTitle"),
+    closeButton: $("closeButton"),
+    titleInput: $("titleInput"),
+    bodyInput: $("bodyInput"),
+    tagsInput: $("tagsInput"),
+    deleteButton: $("deleteButton"),
+    cancelButton: $("cancelButton"),
+    saveButton: $("saveButton"),
+    noteTemplate: $("noteTemplate"),
+  };
+
+  let notes = [];
+  let editingId = "";
+  let trying = false;
+  let lastTry = 0;
+  let statusTimer = 0;
+
+  function storageGet(key) {
+    try { return window.localStorage.getItem(key); } catch { return null; }
+  }
+  function storageSet(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function makeId() {
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+  }
+  function normalizeNote(item) {
+    return {
+      id: String(item.id || makeId()).slice(0, 80),
+      title: String(item.title || "").slice(0, 80),
+      body: String(item.body || "").slice(0, 8000),
+      tags: Array.isArray(item.tags)
+        ? item.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 8)
+        : [],
+      updated: String(item.updated || new Date().toISOString()),
+    };
+  }
+  function loadNotes() {
+    const raw = storageGet(NOTES_KEY);
+    if (raw === null) {
+      const seeded = SEED.map((item) => normalizeNote(item));
+      storageSet(NOTES_KEY, JSON.stringify(seeded));
+      return seeded;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => item && typeof item === "object").map(normalizeNote);
+    } catch {
+      return [];
+    }
+  }
+  function persistNotes() {
+    if (!storageSet(NOTES_KEY, JSON.stringify(notes))) {
+      setStatus("浏览器未允许保存，本次修改不会保留。");
+    }
+  }
+  function setStatus(text, hold = 0) {
+    if (!el.status) return;
+    el.status.textContent = text;
+    window.clearTimeout(statusTimer);
+    if (text && hold > 0) {
+      statusTimer = window.setTimeout(() => { el.status.textContent = ""; }, hold);
+    }
+  }
+  function formatDate(value) {
+    const stamp = Date.parse(value);
+    if (!Number.isFinite(stamp)) return "";
+    return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(new Date(stamp));
+  }
+  function matches(note, query) {
+    if (!query) return true;
+    return (
+      note.title.toLowerCase().includes(query) ||
+      note.body.toLowerCase().includes(query) ||
+      note.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  }
+  function renderList() {
+    if (!el.noteList) return;
+    const query = (el.searchInput?.value || "").trim().toLowerCase();
+    const visible = notes
+      .filter((note) => matches(note, query))
+      .sort((left, right) => Date.parse(right.updated) - Date.parse(left.updated));
+    el.noteList.replaceChildren();
+    for (const note of visible) {
+      const node = el.noteTemplate.content.firstElementChild.cloneNode(true);
+      const title = node.querySelector(".note-title");
+      const body = node.querySelector(".note-body");
+      const tags = node.querySelector(".note-tags");
+      const time = node.querySelector(".note-time");
+      const del = node.querySelector(".note-del");
+      title.textContent = note.title || "无标题";
+      body.textContent = note.body.replace(/\s+/g, " ").trim() || "（空白笔记）";
+      for (const tag of note.tags) {
+        const chip = document.createElement("span");
+        chip.className = "tag";
+        chip.textContent = tag;
+        tags.append(chip);
+      }
+      time.dateTime = note.updated;
+      time.textContent = formatDate(note.updated);
+      node.addEventListener("click", () => openEditor(note.id));
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openEditor(note.id);
+        }
+      });
+      del.addEventListener("click", (event) => {
+        event.stopPropagation();
+        removeNote(note.id);
+      });
+      el.noteList.append(node);
+    }
+    if (el.countLabel) {
+      el.countLabel.textContent = query
+        ? `${visible.length} 条笔记 · 搜索“${(el.searchInput?.value || "").trim()}”`
+        : `${visible.length} 条笔记`;
+    }
+    if (el.emptyState) el.emptyState.hidden = visible.length !== 0;
+  }
+  function openEditor(id) {
+    editingId = id || "";
+    const note = notes.find((item) => item.id === editingId) || null;
+    if (el.editorTitle) el.editorTitle.textContent = note ? "编辑笔记" : "新建笔记";
+    if (el.titleInput) el.titleInput.value = note ? note.title : "";
+    if (el.bodyInput) el.bodyInput.value = note ? note.body : "";
+    if (el.tagsInput) el.tagsInput.value = note ? note.tags.join(", ") : "";
+    if (el.deleteButton) el.deleteButton.hidden = !note;
+    if (el.backdrop) el.backdrop.hidden = false;
+    if (el.editor) el.editor.hidden = false;
+    document.body.classList.add("is-editing");
+    window.setTimeout(() => el.titleInput?.focus({ preventScroll: true }), 30);
+  }
+  function closeEditor() {
+    if (el.editor) el.editor.hidden = true;
+    if (el.backdrop) el.backdrop.hidden = true;
+    document.body.classList.remove("is-editing");
+    editingId = "";
+  }
+  function parseTags(value) {
+    const seen = new Set();
+    const out = [];
+    for (const raw of String(value || "").split(/[,，\s]+/)) {
+      const tag = raw.trim().slice(0, 20);
+      const key = tag.toLowerCase();
+      if (!tag || seen.has(key)) continue;
+      seen.add(key);
+      out.push(tag);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
+  function saveEditor() {
+    const title = (el.titleInput?.value || "").trim();
+    const body = (el.bodyInput?.value || "").trim();
+    const tags = parseTags(el.tagsInput?.value);
+    if (!title && !body) {
+      setStatus("写点什么再保存吧。", 1800);
+      el.titleInput?.focus();
+      return;
+    }
+    if (editingId) {
+      const note = notes.find((item) => item.id === editingId);
+      if (note) {
+        note.title = title || "无标题";
+        note.body = body;
+        note.tags = tags;
+        note.updated = new Date().toISOString();
+      }
+    } else {
+      notes.unshift({
+        id: makeId(),
+        title: title || "无标题",
+        body,
+        tags,
+        updated: new Date().toISOString(),
+      });
+    }
+    persistNotes();
+    renderList();
+    closeEditor();
+    setStatus("已保存。", 1600);
+  }
+  function removeNote(id) {
+    const note = notes.find((item) => item.id === id);
+    if (!note) return;
+    if (!window.confirm(`删除「${note.title || "无标题"}」这条笔记？`)) return;
+    notes = notes.filter((item) => item.id !== id);
+    persistNotes();
+    renderList();
+    if (editingId === id) closeEditor();
+    setStatus("已删除。", 1600);
+  }
+  function packError(code) {
+    const error = new Error(code);
+    error.code = code;
+    return error;
+  }
+  function base64Bytes(value) {
+    if (typeof value !== "string" || !value) throw packError("mismatch");
+    let binary;
+    try { binary = window.atob(value); } catch { throw packError("mismatch"); }
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  }
+  async function fetchPack(name) {
+    let response;
+    try {
+      response = await fetch(`./assets/${name}.json?_=${Date.now()}`, { cache: "no-store" });
+    } catch {
+      throw packError("network");
+    }
+    if (!response.ok) throw packError("network");
+    try {
+      return await response.json();
+    } catch {
+      throw packError("mismatch");
+    }
+  }
+  async function deriveKey(value, salt) {
+    const material = await WEB_C.subtle.importKey(
+      "raw", new TextEncoder().encode(value), KDF, false, ["deriveKey"]
+    );
+    return WEB_C.subtle.deriveKey(
+      { name: KDF, salt, iterations: ITERATIONS, hash: "SHA-256" },
+      material,
+      { name: CIPHER, length: 256 },
+      false,
+      ["decrypt"]
+    );
+  }
+  async function openWithKey(envelope, key) {
+    if (!envelope || typeof envelope !== "object") throw packError("mismatch");
+    const iv = base64Bytes(envelope.iv);
+    const data = base64Bytes(envelope.ciphertext);
+    let plain;
+    try {
+      plain = await WEB_C.subtle.decrypt({ name: CIPHER, iv, tagLength: 128 }, key, data);
+    } catch {
+      throw packError("mismatch");
+    }
+    try {
+      return JSON.parse(new TextDecoder().decode(plain));
+    } catch {
+      throw packError("mismatch");
+    }
+  }
+  function sameBytes(left, right) {
+    if (left.length !== right.length) return false;
+    for (let index = 0; index < left.length; index += 1) {
+      if (left[index] !== right[index]) return false;
+    }
+    return true;
+  }
+  function encodeValue(value) {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return window.btoa(binary);
+  }
+  function decodeValue(value) {
+    const binary = window.atob(value);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+  function savePref(value) {
+    try {
+      window.localStorage.setItem(PREFS_KEY, JSON.stringify({ v: 1, p: encodeValue(value), t: Date.now() }));
+    } catch { /* ignore */ }
+  }
+  function readPref() {
+    try {
+      const raw = window.localStorage.getItem(PREFS_KEY);
+      if (!raw) return "";
+      const data = JSON.parse(raw);
+      if (!data || data.v !== 1 || typeof data.p !== "string") return "";
+      return decodeValue(data.p);
+    } catch {
+      return "";
+    }
+  }
+  function clearPref() {
+    try { window.localStorage.removeItem(PREFS_KEY); } catch { /* ignore */ }
+  }
+  async function tryTheme(value, options = {}) {
+    const auto = Boolean(options.auto);
+    if (!WEB_C || !WEB_C.subtle) return "mismatch";
+    if (trying) return "busy";
+    const now = Date.now();
+    if (now - lastTry < 1200) return "busy";
+    lastTry = now;
+    trying = true;
+    if (!auto) setStatus("正在整理…");
+    try {
+      const themeEnvelope = await fetchPack("theme_pack");
+      const stateEnvelope = await fetchPack("memo_cache").catch(() => null);
+      const themeSalt = base64Bytes(themeEnvelope.salt);
+      const themeKey = await deriveKey(value, themeSalt);
+      const theme = await openWithKey(themeEnvelope, themeKey);
+      if (!theme || typeof theme.html !== "string" || theme.html.length < 200) {
+        throw packError("mismatch");
+      }
+      let state = null;
+      if (stateEnvelope) {
+        try {
+          const stateSalt = base64Bytes(stateEnvelope.salt);
+          const stateKey = sameBytes(stateSalt, themeSalt) ? themeKey : await deriveKey(value, stateSalt);
+          const parsed = await openWithKey(stateEnvelope, stateKey);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) state = parsed;
+        } catch {
+          state = null;
+        }
+      }
+      savePref(value);
+      window.__MEMO_BOOT__ = { pass: value, state };
+      document.open();
+      document.write(theme.html);
+      document.close();
+      return "ok";
+    } catch (error) {
+      return error && error.code === "network" ? "network" : "mismatch";
+    } finally {
+      trying = false;
+      if (!auto) setStatus("");
+    }
+  }
+  function registerSW() {
+    if (!("serviceWorker" in navigator)) return;
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") return;
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+  function bind() {
+    el.newButton?.addEventListener("click", () => openEditor(""));
+    el.closeButton?.addEventListener("click", closeEditor);
+    el.cancelButton?.addEventListener("click", closeEditor);
+    el.saveButton?.addEventListener("click", saveEditor);
+    el.backdrop?.addEventListener("click", closeEditor);
+    el.deleteButton?.addEventListener("click", () => {
+      if (editingId) removeNote(editingId);
+    });
+    el.searchInput?.addEventListener("input", () => {
+      setStatus("");
+      renderList();
+    });
+    el.searchForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const value = (el.searchInput?.value || "").trim();
+      if (value.length >= 4 && value.length <= MAX_CODE_LENGTH) {
+        const result = await tryTheme(value);
+        if (result === "ok") return;
+      }
+      renderList();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && el.editor && !el.editor.hidden) closeEditor();
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key !== NOTES_KEY) return;
+      notes = loadNotes();
+      renderList();
+    });
+  }
+  async function boot() {
+    notes = loadNotes();
+    renderList();
+    bind();
+    registerSW();
+    const saved = readPref();
+    if (!saved) return;
+    const result = await tryTheme(saved, { auto: true });
+    if (result === "mismatch") clearPref();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
